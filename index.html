@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Databricks Online Tables Cost Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2 {
+            color: #1565C0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: inline-block;
+            width: 220px;
+            font-weight: bold;
+        }
+        input {
+            padding: 5px;
+            width: 150px;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #1565C0;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0D47A1;
+        }
+        .results {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        .explanation {
+            margin-top: 30px;
+            font-size: 0.9em;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Databricks Online Tables Cost Calculator</h1>
+    <div class="input-group">
+        <label for="hours">Hours per month:</label>
+        <input type="number" id="hours" value="720">
+        <span>(Default: 24 hours × 30 days = 720)</span>
+    </div>
+
+    <h2>Capacity Unit Configuration</h2>
+    <p>Auto-scaling capacity units based on workload demands</p>
+    <div class="input-group">
+        <label for="avgCapacityUnits">Average Capacity Units:</label>
+        <input type="number" id="avgCapacityUnits" value="1" step="0.1">
+    </div>
+    <div class="input-group">
+        <label for="capacityUnitPrice">Price per Capacity Unit per hour ($):</label>
+        <input type="number" id="capacityUnitPrice" value="1.00" step="0.01">
+    </div>
+
+    <h2>Storage Configuration</h2>
+    <div class="input-group">
+        <label for="storageGB">Storage (GB):</label>
+        <input type="number" id="storageGB" value="100">
+    </div>
+    <div class="input-group">
+        <label for="storagePrice">Price per GB-month ($):</label>
+        <input type="number" id="storagePrice" value="0.375" step="0.001">
+    </div>
+
+    <button onclick="calculateCost()">Calculate Cost</button>
+
+    <div class="results" id="results">
+        <h2>Monthly Cost Estimate</h2>
+        <table>
+            <tr>
+                <th>Component</th>
+                <th>Calculation</th>
+                <th>Cost ($)</th>
+            </tr>
+            <tr>
+                <td>Capacity Units (Jobs Serverless Compute SKU)</td>
+                <td id="capacityCalculation">-</td>
+                <td id="capacityCost">-</td>
+            </tr>
+            <tr>
+                <td>Storage (Databricks Storage SKU)</td>
+                <td id="storageCalculation">-</td>
+                <td id="storageCost">-</td>
+            </tr>
+            <tr>
+                <th colspan="2">Total Monthly Cost</th>
+                <th id="totalCost">-</th>
+            </tr>
+        </table>
+        
+        <h3>Databricks Billing Units</h3>
+        <table>
+            <tr>
+                <th>Component</th>
+                <th>Calculation</th>
+                <th>Billing Units</th>
+            </tr>
+            <tr>
+                <td>DBUs consumed (2 DBUs/hr per Capacity Unit)</td>
+                <td id="dbuCalculation">-</td>
+                <td id="dbuTotal">-</td>
+            </tr>
+            <tr>
+                <td>DSUs consumed (15 DSUs per GB-month)</td>
+                <td id="dsuCalculation">-</td>
+                <td id="dsuTotal">-</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="explanation">
+        <h3>Notes on Billing</h3>
+        <ul>
+            <li>Capacity Units are billed using the <strong>"Jobs Serverless Compute"</strong> SKU on AWS</li>
+            <li>Each Capacity Unit consumes <strong>2 DBUs/hour</strong></li>
+            <li>Storage is billed using the <strong>"Databricks Storage"</strong> SKU</li>
+            <li>Each GB-month of storage consumes <strong>15 DSUs</strong></li>
+            <li>Capacity Units auto-scale based on workload requirements and the actual number used may vary throughout the month</li>
+            <li>This calculator uses an estimated average number of Capacity Units</li>
+        </ul>
+    </div>
+
+    <script>
+        function calculateCost() {
+            // Get input values
+            const hours = parseFloat(document.getElementById('hours').value);
+            const avgCapacityUnits = parseFloat(document.getElementById('avgCapacityUnits').value);
+            const capacityUnitPrice = parseFloat(document.getElementById('capacityUnitPrice').value);
+            const storageGB = parseFloat(document.getElementById('storageGB').value);
+            const storagePrice = parseFloat(document.getElementById('storagePrice').value);
+            
+            // Calculate costs
+            const capacityCost = avgCapacityUnits * capacityUnitPrice * hours;
+            const storageCost = storageGB * storagePrice;
+            const totalCost = capacityCost + storageCost;
+            
+            // Calculate billing units
+            const dbuTotal = avgCapacityUnits * 2 * hours;
+            const dsuTotal = storageGB * 15;
+            
+            // Update result display
+            document.getElementById('capacityCalculation').textContent = 
+                `${avgCapacityUnits} units × $${capacityUnitPrice.toFixed(2)}/hour × ${hours} hours`;
+            document.getElementById('capacityCost').textContent = 
+                `$${capacityCost.toFixed(2)}`;
+            
+            document.getElementById('storageCalculation').textContent = 
+                `${storageGB} GB × $${storagePrice.toFixed(3)}/GB-month`;
+            document.getElementById('storageCost').textContent = 
+                `$${storageCost.toFixed(2)}`;
+            
+            document.getElementById('totalCost').textContent = 
+                `$${totalCost.toFixed(2)}`;
+                
+            document.getElementById('dbuCalculation').textContent = 
+                `${avgCapacityUnits} units × 2 DBUs/hour × ${hours} hours`;
+            document.getElementById('dbuTotal').textContent = 
+                `${dbuTotal.toFixed(2)} DBUs`;
+                
+            document.getElementById('dsuCalculation').textContent = 
+                `${storageGB} GB × 15 DSUs/GB-month`;
+            document.getElementById('dsuTotal').textContent = 
+                `${dsuTotal.toFixed(2)} DSUs`;
+        }
+        
+        // Calculate default values on page load
+        window.onload = calculateCost;
+    </script>
+</body>
+</html>
